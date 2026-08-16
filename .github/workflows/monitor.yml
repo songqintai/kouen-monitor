@@ -20,6 +20,9 @@ jobs:
         run: npm install
 
       - name: Run monitor
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_MAIL_TO: ${{ secrets.ALERT_MAIL_TO }}
         run: node monitor.js
 
       - name: Commit snapshot & alerts log
