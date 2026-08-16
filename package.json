@@ -13,6 +13,7 @@
   "scripts": {
     "start": "node monitor.js",
     "start:debug": "node monitor.js --debug",
-    "server": "node server.js"
+    "server": "node server.js",
+    "pages:fetch": "node scripts/fetchData.js"
   }
 }

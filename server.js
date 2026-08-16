@@ -14,40 +14,16 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
-import { TARGETS, fetchAllVacancy, toYyyymmdd } from "./lib/kouenClient.js";
+import { TARGETS, fetchAllVacancy, toYyyymmdd, getCurrentMonthRange } from "./lib/kouenClient.js";
 
 loadEnv();
 
 const PORT = Number(process.env.PORT ?? 3000);
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 自動更新間隔: 1時間（固定）
 // 表示用は診断用のTARGET_DATE/WEEKS_AHEAD固定値には依存せず、常に
-// 「当月分を丸ごと」表示する（下のgetCurrentMonthRange参照）。
+// 「当月分を丸ごと」表示する（lib/kouenClient.js の getCurrentMonthRange 参照）。
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-
-// ------------------------------------------------------------------
-// 当月（今日〜月末）をカバーするのに必要な週数と、絞り込み用の月キーを求める。
-// APIは1回で7日分しか返さないため、月末を超える分は多めに取得してから
-// 当月分だけにフィルタする。
-// ------------------------------------------------------------------
-function getCurrentMonthRange(date) {
-  const parts = new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const y = Number(parts.find((p) => p.type === "year").value);
-  const m = Number(parts.find((p) => p.type === "month").value);
-  const d = Number(parts.find((p) => p.type === "day").value);
-  const lastDay = new Date(y, m, 0).getDate(); // 当月の末日
-  const daysRemaining = lastDay - d + 1;
-  return {
-    monthKey: `${y}${String(m).padStart(2, "0")}`,
-    monthLabel: `${y}年${m}月`,
-    weeksAhead: Math.max(1, Math.ceil(daysRemaining / 7)),
-  };
-}
 
 const app = express();
 app.use(express.static(path.join(__dirname, "public")));
