@@ -51,8 +51,12 @@ const WEEKS_AHEAD = Number(process.env.WEEKS_AHEAD ?? 1);
 //  targetDate未指定時に自動で当日日付を使う）。
 const TARGET_DATE = process.env.TARGET_DATE || "20260817";
 
-// 土日祝の新規空き通知の送信先（.env の ALERT_MAIL_TO で上書き可能）
-const ALERT_MAIL_TO = process.env.ALERT_MAIL_TO || "songqintai169@gmail.com";
+// 土日祝の新規空き通知の送信先（.env の ALERT_MAIL_TO で上書き可能）。
+// 複数宛先はセミコロン区切り（例: "a@example.com;b@example.com"）。
+const ALERT_MAIL_TO = (process.env.ALERT_MAIL_TO || "songqintai169@gmail.com")
+  .split(";")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 function formatSlotDate(useDay) {
   const s = String(useDay);
