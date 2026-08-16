@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>都立公園スポーツ施設 空き状況</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #f5f6f8;
+    margin: 0;
+    padding: 24px;
+    color: #222;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h2 {
+    font-size: 15px;
+    margin: 28px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e2e4e8;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  h2 .inst { font-weight: 400; color: #666; font-size: 13px; }
+  .meta { color: #777; font-size: 13px; margin-bottom: 20px; }
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 20px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+  .swatch.available { background: #16a34a; }
+  .swatch.reserved { background: #e5e7eb; border: 1px solid #d1d5db; }
+  .swatch.maintenance { background: #f3f4f6; background-image: repeating-linear-gradient(45deg, #d1d5db 0, #d1d5db 2px, transparent 2px, transparent 6px); border: 1px solid #d1d5db; }
+  .swatch.unknown { background: #fef3c7; border: 1px solid #fcd34d; }
+
+  .grid-wrap { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  table.vgrid { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  table.vgrid th, table.vgrid td {
+    border: 1px solid #eee;
+    padding: 3px 1px;
+    text-align: center;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  table.vgrid thead th {
+    background: #fafafa;
+    color: #444;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    line-height: 1.5;
+  }
+  table.vgrid th .wd { display: block; font-weight: 400; font-size: 9px; color: #999; }
+  table.vgrid th.weekend .wd { color: #d33; }
+  table.vgrid th.timecol, table.vgrid td.timecol {
+    width: 46px;
+    text-align: left;
+    padding-left: 6px;
+    color: #555;
+    font-weight: 500;
+    background: #fcfcfd;
+    position: sticky;
+    left: 0;
+    font-size: 10px;
+  }
+  td.cell { cursor: default; }
+  td.cell.available { background: #16a34a; color: white; font-weight: 600; }
+  td.cell.reserved { background: #f7f8f9; color: #bbb; }
+  td.cell.maintenance { background: #f3f4f6; color: #bbb; background-image: repeating-linear-gradient(45deg, #eceef0 0, #eceef0 4px, #f3f4f6 4px, #f3f4f6 10px); }
+  td.cell.unknown { background: #fef3c7; color: #92400e; }
+  td.cell.empty { color: #ccc; }
+
+  .empty-msg { padding: 40px; text-align: center; color: #999; }
+  .loading { padding: 60px 20px; text-align: center; color: #555; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #e0e0e0; border-top-color: #2563eb; border-radius: 50%;
+    margin: 0 auto 16px; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading .progress-text { font-size: 13px; color: #888; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>都立公園スポーツ施設 空き状況</h1>
+<div class="meta" id="meta">読み込み中...</div>
+
+<div class="legend">
+  <span><span class="swatch available"></span>○ 空き</span>
+  <span><span class="swatch reserved"></span>✖ 予約あり</span>
+  <span><span class="swatch maintenance"></span>－ 保守日</span>
+  <span><span class="swatch unknown"></span>？ その他</span>
+</div>
+
+<div id="content"></div>
+
+<script>
+const metaEl = document.getElementById('meta');
+const contentEl = document.getElementById('content');
+
+// 観測データは分が常に00のため、分が0の時は時のみのコンパクト表記にする
+function formatTime(t) {
+  const h = Math.floor(t / 100);
+  const m = t % 100;
+  return m === 0 ? `${h}` : `${h}:${String(m).padStart(2, '0')}`;
+}
+
+function formatDateHeader(useDay) {
+  const s = String(useDay);
+  const y = Number(s.slice(0, 4));
+  const mo = Number(s.slice(4, 6));
+  const d = Number(s.slice(6, 8));
+  const date = new Date(y, mo - 1, d);
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+  return { label: `${d}`, wd, isWeekend: date.getDay() === 0 || date.getDay() === 6 };
+}
+
+function statusClass(status) {
+  if (status === 0) return 'available';
+  if (status === 210) return 'reserved';
+  if (status === 1) return 'maintenance';
+  return 'unknown';
+}
+
+// グリッド内に表示する短い記号。詳細な文言は title 属性（ホバー）で見せる。
+function statusSymbol(cls, alt) {
+  if (cls === 'available') return '○';
+  if (cls === 'reserved') return '✖';
+  if (cls === 'maintenance') return '－';
+  return alt || '？';
+}
+
+function renderLoading(progress) {
+  const label = progress?.label || 'データを取得中';
+  const done = progress?.done ?? 0;
+  const total = progress?.total ?? 0;
+  const progressLine = total > 0 ? `<div class="progress-text">${label}：${done} / ${total} 施設</div>` : `<div class="progress-text">${label}</div>`;
+  contentEl.innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>初回読み込み中です。各施設の空き状況を取得しています...</div>
+      ${progressLine}
+    </div>
+  `;
+}
+
+function groupByFacility(slots) {
+  const groups = new Map();
+  for (const s of slots) {
+    const key = `${s.bldCd}_${s.instCd}`;
+    if (!groups.has(key)) groups.set(key, { bcdNm: s.bcdNm, instName: s.instName, slots: [] });
+    groups.get(key).slots.push(s);
+  }
+  return groups;
+}
+
+function renderFacilityGrid(group) {
+  const times = [...new Set(group.slots.map((s) => `${s.startTime}_${s.endTime}`))]
+    .sort((a, b) => Number(a.split('_')[0]) - Number(b.split('_')[0]));
+  const days = [...new Set(group.slots.map((s) => s.useDay))].sort((a, b) => a - b);
+
+  if (times.length === 0 || days.length === 0) {
+    return `<div class="empty-msg">データがありません</div>`;
+  }
+
+  const byKey = new Map();
+  for (const s of group.slots) {
+    byKey.set(`${s.startTime}_${s.endTime}_${s.useDay}`, s);
+  }
+
+  const headerCells = days.map((d) => {
+    const { label, wd, isWeekend } = formatDateHeader(d);
+    return `<th class="${isWeekend ? 'weekend' : ''}">${label}<span class="wd">${wd}</span></th>`;
+  }).join('');
+
+  const rows = times.map((t) => {
+    const [start, end] = t.split('_').map(Number);
+    const cells = days.map((d) => {
+      const slot = byKey.get(`${t}_${d}`);
+      if (!slot) return `<td class="cell empty">-</td>`;
+      const cls = statusClass(slot.status);
+      const text = statusSymbol(cls, slot.alt);
+      return `<td class="cell ${cls}" title="${slot.alt || ''}">${text}</td>`;
+    }).join('');
+    return `<tr><td class="timecol">${formatTime(start)}-${formatTime(end)}</td>${cells}</tr>`;
+  }).join('');
+
+  return `
+    <div class="grid-wrap">
+      <table class="vgrid">
+        <thead><tr><th class="timecol">時間帯</th>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderFacilities(slots) {
+  if (slots.length === 0) {
+    contentEl.innerHTML = '<div class="empty-msg">空き状況データがありません</div>';
+    return;
+  }
+  const groups = groupByFacility(slots);
+  let html = '';
+  for (const group of groups.values()) {
+    html += `<h2>${group.bcdNm} <span class="inst">${group.instName}</span></h2>`;
+    html += renderFacilityGrid(group);
+  }
+  contentEl.innerHTML = html;
+}
+
+async function loadVacancy() {
+  const res = await fetch('/api/vacancy');
+  const data = await res.json();
+
+  const isFirstLoad = !data.lastUpdated && data.isRefreshing;
+
+  if (isFirstLoad) {
+    metaEl.textContent = 'データがまだありません。初回取得を実行中...';
+    renderLoading(data.progress);
+  } else {
+    const monthPart = data.monthLabel ? `${data.monthLabel}分　|　` : '';
+    metaEl.textContent = data.lastUpdated
+      ? `${monthPart}最終更新: ${new Date(data.lastUpdated).toLocaleString('ja-JP')}${data.isRefreshing ? '（バックグラウンドで更新中...）' : ''}`
+      : 'データがまだありません';
+    renderFacilities(data.slots);
+  }
+}
+
+// 定期的にポーリングしてサーバー側の自動更新結果を反映する。
+// 取得中は2秒間隔、通常時は30秒間隔（このページ自体は取得をトリガーしない）
+let pollTimer = null;
+async function pollLoop() {
+  const res = await fetch('/api/vacancy');
+  const data = await res.json();
+  await loadVacancy();
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(pollLoop, data.isRefreshing ? 2000 : 30000);
+}
+
+pollLoop();
+</script>
+
+</body>
+</html>

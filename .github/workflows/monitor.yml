@@ -1,0 +1,31 @@
+name: kouen-facility-monitor
+
+on:
+  schedule:
+    # 毎時0分に実行（UTC基準。UTC 0分 = JST +9時間の毎時0分）
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run monitor
+        run: node monitor.js
+
+      - name: Commit snapshot & alerts log
+        run: |
+          git config user.name "kouen-monitor-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/snapshot.json data/alerts.log || true
+          git diff --quiet --cached || git commit -m "chore: update snapshot [skip ci]"
+          git push
