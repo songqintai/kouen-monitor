@@ -2,9 +2,16 @@ name: kouen-facility-monitor
 
 on:
   schedule:
-    # 毎時0分に実行（UTC基準。UTC 0分 = JST +9時間の毎時0分）
-    - cron: "0 * * * *"
+    # 15分おきに実行（UTC基準。GitHub Actionsの最短間隔は5分だが、対象サイトへの
+    # アクセス頻度を考慮して15分にしている。高負荷時は数分遅延することがある）
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
+
+# 15分間隔だと前回の実行が長引いた場合に次回と重なる可能性があるため、
+# 前回が終わるまで次回を待たせる（同時実行による重複メール送信やpush衝突を防ぐ）
+concurrency:
+  group: kouen-monitor
+  cancel-in-progress: false
 
 jobs:
   monitor:
