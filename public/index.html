@@ -164,7 +164,9 @@ function groupByFacility(slots) {
 }
 
 function renderFacilityGrid(group) {
+  // 7-9時の枠は全施設で表示しない
   const times = [...new Set(group.slots.map((s) => `${s.startTime}_${s.endTime}`))]
+    .filter((t) => Number(t.split('_')[0]) !== 700)
     .sort((a, b) => Number(a.split('_')[0]) - Number(b.split('_')[0]));
   const days = [...new Set(group.slots.map((s) => s.useDay))].sort((a, b) => a - b);
 
