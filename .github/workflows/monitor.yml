@@ -21,7 +21,8 @@ jobs:
 
       - name: Run monitor
         env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_MAIL_TO: ${{ secrets.ALERT_MAIL_TO }}
         run: node monitor.js
 
