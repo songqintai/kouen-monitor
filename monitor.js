@@ -1,5 +1,5 @@
 /**
- * 都立公園スポーツ施設予約システム 空き状況監視スクリプト（プロトタイプ）
+ * 都立公園スポーツ施設予約システム 空き状況監視スクリプト
  *
  * 対象: kouen.sports.metro.tokyo.lg.jp
  * 監視対象施設: 木場公園(人工芝)、有明テニスA/B/C（lib/kouenClient.js の TARGETS 参照、計4施設）
@@ -9,16 +9,21 @@
  *   （プロジェクト直下に .env ファイルがあれば dotenv が自動で読み込みます。
  *     ログイン不要のため .env 自体無くても動作します）
  *
- * ステータス: 2026-08-14時点で動作確認済み。実際に木場公園の空き状況
- *   （8/17 9-11時が空き等）を取得できることを確認した。
+ * このスクリプトは以下を1回のサイトアクセスでまとめて行う（元々は
+ * monitor.js と scripts/fetchData.js に分かれていたが、同じデータを
+ * 2つのGitHub Actionsが別々に取得していて無駄が多く、しかも別々に
+ * git pushするとリモートが競合しやすかったため統合した）：
+ *   1. 当月分の空き状況を取得（lib/kouenClient.js の getCurrentMonthRange）
+ *   2. 前回スナップショットとdiffして新規空きを検知 → data/snapshot.json, data/alerts.log
+ *   3. 新規空きが土日祝ならメール通知（lib/mailer.js, lib/holidays.js）
+ *   4. GitHub Pages表示用に docs/data/vacancy.json を書き出し
  *
  * 処理フローの詳細・詰まったポイントは同ディレクトリの KOUEN-MONITOR.md、
  * 実際のAPI呼び出しロジックは lib/kouenClient.js を参照。
  *
  * 注意:
- *   - このスクリプトは1回実行して終了する設計です。「1時間ごとに実行」は
- *     外部のスケジューラ（GitHub Actions の cron、cron(1)、node-cron等）に
- *     任せてください。
+ *   - このスクリプトは1回実行して終了する設計です。「定期的に実行」は
+ *     外部のスケジューラ（GitHub Actions の cron等）に任せてください。
  *   - リアルタイムに空き状況を眺めたいだけなら server.js（Web表示）の方が便利です。
  */
 
@@ -27,7 +32,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
-import { TARGETS, fetchAllVacancy, makeFileDebugSink } from "./lib/kouenClient.js";
+import { TARGETS, fetchAllVacancy, makeFileDebugSink, toYyyymmdd, getCurrentMonthRange } from "./lib/kouenClient.js";
 import { checkRestDay } from "./lib/holidays.js";
 import { sendMail } from "./lib/mailer.js";
 
@@ -40,16 +45,8 @@ loadEnv();
 const DATA_DIR = fileURLToPath(new URL("./data/", import.meta.url));
 const SNAPSHOT_PATH = path.join(DATA_DIR, "snapshot.json");
 const ALERTS_LOG_PATH = path.join(DATA_DIR, "alerts.log");
+const PAGES_JSON_PATH = fileURLToPath(new URL("./docs/data/vacancy.json", import.meta.url));
 const DEBUG = process.env.DEBUG === "1" || process.argv.includes("--debug");
-
-// 何週間先まで見るか（1 = 今週分の7日間のみ）
-const WEEKS_AHEAD = Number(process.env.WEEKS_AHEAD ?? 1);
-
-// 検索開始日（YYYYMMDD）。環境変数 TARGET_DATE で上書き可能。
-// 未指定時のデフォルトは動作確認用に2026-08-17固定にしている
-// （実運用では省略して当日日付を使うのが自然。fetchAllVacancy()は
-//  targetDate未指定時に自動で当日日付を使う）。
-const TARGET_DATE = process.env.TARGET_DATE || "20260817";
 
 // 土日祝の新規空き通知の送信先（.env の ALERT_MAIL_TO で上書き可能）。
 // 複数宛先はセミコロン区切り（例: "a@example.com;b@example.com"）。
@@ -98,22 +95,41 @@ async function appendAlertsLog(lines) {
   await writeFile(ALERTS_LOG_PATH, body, { flag: "a" });
 }
 
+async function savePagesJson({ monthKey, monthLabel, slots }) {
+  const output = {
+    lastUpdated: new Date().toISOString(),
+    monthKey,
+    monthLabel,
+    total: slots.length,
+    targets: TARGETS.map((t) => ({ bldCd: t.bldCd, instCd: t.instCd, bcdNm: t.bcdNm, instName: t.instName })),
+    slots,
+  };
+  await mkdir(path.dirname(PAGES_JSON_PATH), { recursive: true });
+  await writeFile(PAGES_JSON_PATH, JSON.stringify(output, null, 2), "utf-8");
+}
+
 // ------------------------------------------------------------------
 // メイン処理
 // ------------------------------------------------------------------
 async function main() {
   const prevSnapshot = await loadPrevSnapshot();
 
-  console.log("空き状況を取得中...");
-  const slots = await fetchAllVacancy({
+  const now = new Date();
+  const { monthKey, monthLabel, weeksAhead } = getCurrentMonthRange(now);
+
+  console.log(`空き状況を取得中...（${monthLabel}分, ${weeksAhead}週）`);
+  const rawSlots = await fetchAllVacancy({
     targets: TARGETS,
-    weeksAhead: WEEKS_AHEAD,
-    targetDate: TARGET_DATE,
+    weeksAhead,
+    targetDate: toYyyymmdd(now),
     debugSink: DEBUG ? makeFileDebugSink(DATA_DIR) : undefined,
     onProgress: (done, total, label) => {
       console.log(`  [${done}/${total}] ${label}`);
     },
   });
+
+  // 週単位で取得するAPIの都合上、月末を超えた分が混ざるので当月分だけに絞る
+  const slots = rawSlots.filter((s) => String(s.useDay).slice(0, 6) === monthKey);
 
   const newSnapshot = {};
   const alertLines = [];
@@ -136,6 +152,7 @@ async function main() {
   console.log("結果を保存中...");
   await saveSnapshot(newSnapshot);
   await appendAlertsLog(alertLines);
+  await savePagesJson({ monthKey, monthLabel, slots });
 
   if (alertLines.length) {
     console.log(`\n🎾 新たな空きを検知しました（${alertLines.length}件）:`);

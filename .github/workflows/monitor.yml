@@ -1,4 +1,8 @@
 name: kouen-facility-monitor
+# 1回のサイトアクセスで「新規空き検知＋メール通知」と「GitHub Pages表示用データ」
+# の両方を面倒みる（元々はscripts/fetchData.js用に別workflowを分けていたが、
+# 同じデータを別々に取得する無駄と、2つのworkflowが同時にmainへpushして
+# 競合するリスクがあったため統合した）。
 
 on:
   schedule:
@@ -7,7 +11,7 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
-# 15分間隔だと前回の実行が長引いた場合に次回と重なる可能性があるため、
+# 前回の実行が長引いた場合に次回と重なる可能性があるため、
 # 前回が終わるまで次回を待たせる（同時実行による重複メール送信やpush衝突を防ぐ）
 concurrency:
   group: kouen-monitor
@@ -33,14 +37,14 @@ jobs:
           ALERT_MAIL_TO: ${{ secrets.ALERT_MAIL_TO }}
         run: node monitor.js
 
-      - name: Commit snapshot & alerts log
+      - name: Commit snapshot, alerts log & GitHub Pages data
         run: |
           git config user.name "kouen-monitor-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/snapshot.json data/alerts.log || true
+          git add data/snapshot.json data/alerts.log docs/data/vacancy.json || true
           git diff --quiet --cached || git commit -m "chore: update snapshot [skip ci]"
-          # kouen-pages-dataworkflowと同時にpushしてrejectされることがあるため、
-          # 事前にリモートの最新を取り込んでからpushする（衝突時は最大3回リトライ）
+          # 手動pushやリモート側の変化とタイミングが重なってrejectされることが
+          # あるため、事前にリモートの最新を取り込んでからpushする（最大3回リトライ）
           for i in 1 2 3; do
             git pull --rebase origin main && git push && break
             echo "push失敗、リトライします ($i/3)..."
