@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-18T22:33:23.787Z",
+  "lastUpdated": "2026-08-18T23:01:44.823Z",
   "monthKey": "202608",
   "monthLabel": "2026年8月",
   "total": 325,
@@ -1281,8 +1281,8 @@
       "useDay": 20260819,
       "startTime": 1700,
       "endTime": 1900,
-      "status": 210,
-      "alt": "予約あり"
+      "status": 0,
+      "alt": "空き"
     },
     {
       "bldCd": "1350",
