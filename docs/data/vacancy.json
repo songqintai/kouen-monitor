@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-20T07:49:40.099Z",
+  "lastUpdated": "2026-08-20T08:40:23.892Z",
   "monthKey": "202608",
   "monthLabel": "2026年8月",
   "total": 300,
@@ -324,8 +324,8 @@
       "useDay": 20260825,
       "startTime": 1500,
       "endTime": 1700,
-      "status": 210,
-      "alt": "予約あり"
+      "status": 0,
+      "alt": "空き"
     },
     {
       "bldCd": "1060",
@@ -511,8 +511,8 @@
       "useDay": 20260828,
       "startTime": 900,
       "endTime": 1100,
-      "status": 0,
-      "alt": "空き"
+      "status": 210,
+      "alt": "予約あり"
     },
     {
       "bldCd": "1060",
@@ -619,39 +619,6 @@
       "bcdNm": "木場公園",
       "instName": "テニス（人工芝）",
       "useDay": 20260828,
-      "startTime": 1300,
-      "endTime": 1500,
-      "status": 0,
-      "alt": "空き"
-    },
-    {
-      "bldCd": "1060",
-      "instCd": "10600010",
-      "bcdNm": "木場公園",
-      "instName": "テニス（人工芝）",
-      "useDay": 20260829,
-      "startTime": 1300,
-      "endTime": 1500,
-      "status": 210,
-      "alt": "予約あり"
-    },
-    {
-      "bldCd": "1060",
-      "instCd": "10600010",
-      "bcdNm": "木場公園",
-      "instName": "テニス（人工芝）",
-      "useDay": 20260830,
-      "startTime": 1300,
-      "endTime": 1500,
-      "status": 210,
-      "alt": "予約あり"
-    },
-    {
-      "bldCd": "1060",
-      "instCd": "10600010",
-      "bcdNm": "木場公園",
-      "instName": "テニス（人工芝）",
-      "useDay": 20260831,
       "startTime": 1300,
       "endTime": 1500,
       "status": 0,
@@ -662,6 +629,39 @@
       "instCd": "10600010",
       "bcdNm": "木場公園",
       "instName": "テニス（人工芝）",
+      "useDay": 20260829,
+      "startTime": 1300,
+      "endTime": 1500,
+      "status": 210,
+      "alt": "予約あり"
+    },
+    {
+      "bldCd": "1060",
+      "instCd": "10600010",
+      "bcdNm": "木場公園",
+      "instName": "テニス（人工芝）",
+      "useDay": 20260830,
+      "startTime": 1300,
+      "endTime": 1500,
+      "status": 210,
+      "alt": "予約あり"
+    },
+    {
+      "bldCd": "1060",
+      "instCd": "10600010",
+      "bcdNm": "木場公園",
+      "instName": "テニス（人工芝）",
+      "useDay": 20260831,
+      "startTime": 1300,
+      "endTime": 1500,
+      "status": 0,
+      "alt": "空き"
+    },
+    {
+      "bldCd": "1060",
+      "instCd": "10600010",
+      "bcdNm": "木場公園",
+      "instName": "テニス（人工芝）",
       "useDay": 20260827,
       "startTime": 1500,
       "endTime": 1700,
@@ -676,8 +676,8 @@
       "useDay": 20260828,
       "startTime": 1500,
       "endTime": 1700,
-      "status": 210,
-      "alt": "予約あり"
+      "status": 0,
+      "alt": "空き"
     },
     {
       "bldCd": "1060",
@@ -2777,8 +2777,8 @@
       "useDay": 20260822,
       "startTime": 900,
       "endTime": 1100,
-      "status": 210,
-      "alt": "予約あり"
+      "status": 0,
+      "alt": "空き"
     },
     {
       "bldCd": "1360",
@@ -2854,8 +2854,8 @@
       "useDay": 20260822,
       "startTime": 1100,
       "endTime": 1300,
-      "status": 210,
-      "alt": "予約あり"
+      "status": 0,
+      "alt": "空き"
     },
     {
       "bldCd": "1360",
@@ -2931,8 +2931,8 @@
       "useDay": 20260822,
       "startTime": 1300,
       "endTime": 1500,
-      "status": 210,
-      "alt": "予約あり"
+      "status": 0,
+      "alt": "空き"
     },
     {
       "bldCd": "1360",
@@ -3008,8 +3008,8 @@
       "useDay": 20260822,
       "startTime": 1500,
       "endTime": 1800,
-      "status": 210,
-      "alt": "予約あり"
+      "status": 0,
+      "alt": "空き"
     },
     {
       "bldCd": "1360",
